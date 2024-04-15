@@ -1,0 +1,163 @@
+Codes
+____Protein-protein simulation______________________________________________________
+#Generate Topology#
+gmx pdb2gmx -f xxx.pdb -o xxx_processed.gro
+
+
+if Fatal error: Atom HB3 in residue SER 3 was not found in rtp entry SER with 8 atoms while sorting atoms. 
+solution: add -ignh to the initial command 
+
+__________________________________________________________
+#GRID BOX GENERATION#
+gmx editconf -f xxx_processed.gro -o xxx_newbox.gro -c -d 1.0 -bt cubic
+
+__________________________________________________________
+
+#Solvation#
+gmx solvate -cp xxx_newbox.gro -cs spc216.gro -o xxx_solv.gro -p topol.top
+
+__________________________________________________________
+
+#Assemble TPR file #
+gmx grompp -f ions.mdp -c xxx_solv.gro -p topol.top -o ions.tpr
+
+__________________________________________________________
+
+#Add Ions#
+gmx genion -s ions.tpr -o xxx_solv_ions.gro -p topol.top -pname NA -nname CL -neutral
+
+__________________________________________________________
+
+#Energy minimization#
+gmx grompp -f em.mdp -c xxx_solv_ions.gro -p topol.top -o em.tpr
+
+__________________________________________________________
+
+#EM MD run#
+gmx mdrun -v -deffnm em
+
+__________________________________________________________
+
+#Energy analysis#
+gmx energy -f em.edr -o potential.xvg
+
+__________________________________________________________
+
+#Equilibration NVT#
+gmx grompp -f nvt.mdp -c em.gro -r em.gro -p topol.top -o nvt.tpr
+
+__________________________________________________________
+
+#Equilibration NVT MDrun#
+gmx mdrun -deffnm nvt
+
+__________________________________________________________
+
+
+#Equilibration NVT analysis#
+gmx energy -f nvt.edr -o temperature.xvg
+
+
+__________________________________________________________
+
+#Equilibration NPT#
+gmx grompp -f npt.mdp -c nvt.gro -r nvt.gro -t nvt.cpt -p topol.top -o npt.tpr
+
+__________________________________________________________
+
+#Equilibration NPT MDrun#
+gmx mdrun -deffnm npt
+
+__________________________________________________________
+
+
+#Equilibration NPT analysis#
+gmx energy -f npt.edr -o pressure.xvg
+
+__________________________________________________________
+
+#Density analysis#
+gmx energy -f npt.edr -o density.xvg
+
+
+__________________________________________________________
+
+#MD run setup#
+gmx grompp -f md.mdp -c npt.gro -t npt.cpt -p topol.top -o md_0_1.tpr
+
+
+
+
+gmx mdrun -deffnm md_0_1 -nb gpu -v
+
+
+__________________________________________________________
+
+
+#trjconv#
+gmx trjconv -s md_0_1.tpr -f md_0_1.xtc -o md_0_1_noPBC.xtc -pbc mol -center
+
+
+__________________________________________________________
+
+#RMSD calculations#
+gmx rms -s md_0_1.tpr -f md_0_1_noPBC.xtc -o rmsd.xvg -tu ns
+
+
+__________________________________________________________
+
+
+#RMSD relative to the crystal structure#
+gmx rms -s em.tpr -f md_0_1_noPBC.xtc -o rmsd_xtal.xvg -tu ns
+
+gmx grompp -f MD.mdp -c npt.gro -t npt.cpt -p topol.top -o md_0_100.tpr
+
+
+gmx mdrun -deffnm md_0_100 -nb gpu -v -nt 10 -bonded gpu -pme gpu 
+
+END____________________________________________________________________________________________________________________
+
+#GPU stats
+gpustat -cup
+#
+#FEL#
+gmx covar -s MD.tpr -f MD_center.xtc -o eigenvalues.xvg -v eigenvectors.trr -xpma covapic.xpm
+
+gmx anaeig -f  MD_center.xtc -s MD.tpr -v eigenvectors.trr -last 1 -proj pc1.xvg
+gmx anaeig -f  MD_center.xtc -s MD.tpr -v eigenvectors.trr -first 2 -last 2 -proj pc2.xvg
+
+paste pc1.xvg pc2.xvg  | awk '{print $1, $2, $4}' > PC1PC2.xvg
+
+gmx sham -f PC1PC2.xvg -ls FES.xpm
+
+conda activate py27
+python2.7 xpm2txt.py -f FES.xpm -o free-energy-landscape.dat
+
+#mathematica plot#
+
+data = Import[
+   "/media/abel/Elements/3fv7 \
+simulation/cefu_3fv7/free-energy-landscape.dat", "Table"];
+plot1n = 
+ ListPlot3D[data, ColorFunction -> "Rainbow", 
+  PerformanceGoal -> "Quality", PlotTheme -> "Business"]
+plot2n = 
+ ListContourPlot[{data}, PerformanceGoal -> "Quality", 
+  ColorFunction -> "Rainbow", Axes -> False, Frame -> False, 
+  Ticks -> False]
+level1 = 0; gr1 = 
+Graphics3D[{Texture[plot2n], EdgeForm[], Polygon[{{PC1min, PC2min, level1}, {PC1max, PC2min, level1}, {PC1max, PC2max, level1}, {PC1min, PC2max, level1}}, VertexTextureCoordinates -> {{0, 0}, {1, 0}, {1, 1}, {0, 1}}]}, Lighting -> "Neutral"];
+Show[plot1n, gr1, PlotRange -> All, BoxRatios -> {1, 1, 0.6}, 
+ FaceGrids -> {Back, Left}, Boxes -> False]
+
+
+--------------Gyration Radius------------------
+gmx gyrate -s MD.tpr -f MD_center.xtc -o gyrate1.xvg
+#Choose the group of your choice 
+xmgrace gyrate1.xvg
+
+--------------SASA------------------
+gmx sasa -f abc.trr -s abc.pdb -o abc.xvg
+
+
+
