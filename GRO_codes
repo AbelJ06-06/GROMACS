@@ -150,14 +150,17 @@ Graphics3D[{Texture[plot2n], EdgeForm[], Polygon[{{PC1min, PC2min, level1}, {PC1
 Show[plot1n, gr1, PlotRange -> All, BoxRatios -> {1, 1, 0.6}, 
  FaceGrids -> {Back, Left}, Boxes -> False]
 
+--------------------RMSF------------------
+gmx rmsf -f md_200_fit.xtc -s md_200.tpr -n index.ndx -o rmsf_1.xvg -res
+#Choose the group 3
 
 --------------Gyration Radius------------------
-gmx gyrate -s MD.tpr -f MD_center.xtc -o gyrate1.xvg
-#Choose the group of your choice 
+gmx gyrate -f md_200_fit.xtc -s md_200.tpr -o gyrate_1.xvg
+#Choose the group 1
 xmgrace gyrate1.xvg
 
 --------------SASA------------------
-gmx sasa -f abc.trr -s abc.pdb -o abc.xvg
-
+gmx sasa -f md_200_fit.xtc -s md_200.tpr -o sasa_1.xvg
+#Choose the group 1
 
 
