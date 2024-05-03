@@ -150,6 +150,11 @@ Graphics3D[{Texture[plot2n], EdgeForm[], Polygon[{{PC1min, PC2min, level1}, {PC1
 Show[plot1n, gr1, PlotRange -> All, BoxRatios -> {1, 1, 0.6}, 
  FaceGrids -> {Back, Left}, Boxes -> False]
 
+
+--------------------RMSD------------------
+gmx rmsf -f md_200_fit.xtc -s md_200.tpr -n index.ndx -o rmsd_1.xvg -tu ns
+#Choose the group 3
+
 --------------------RMSF------------------
 gmx rmsf -f md_200_fit.xtc -s md_200.tpr -n index.ndx -o rmsf_1.xvg -res
 #Choose the group 3
