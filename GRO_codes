@@ -1,7 +1,7 @@
 Codes
 ____Protein-protein simulation______________________________________________________
 #Generate Topology#
-gmx pdb2gmx -f xxx.pdb -o xxx_processed.gro
+gmx pdb2gmx -f xxx.pdb -o xxx_processed.gro -ter -ignh
 
 
 if Fatal error: Atom HB3 in residue SER 3 was not found in rtp entry SER with 8 atoms while sorting atoms. 
